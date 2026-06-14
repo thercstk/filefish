@@ -1,4 +1,5 @@
 from constants import *
+import attack_tables as at
 
 class Board:
     def __init__(self):
