@@ -13,3 +13,8 @@ The first thing i need is a good board representation. We'll see how it goes.
 12/6/2026
 
 Currently strugling with organization. First commits will tend to have positional changes.
+
+16/6/2026
+
+After some minimal changes (and the attack tables, of course) i've decided to implement De Brujin BitScan for a 
+minimal performance boost. And, if i stay awake, maybe i can get to implement the attack tables for the sliding pieces.
