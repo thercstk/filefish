@@ -54,7 +54,7 @@ BISHOP_MAGICS = [
 #           GENERATORS           #
 # ============================== #
 
-def generate_rook_attacks(i: int, bb: int) -> int:
+def generate_rook_attacks(i, bb):
     attacks = 0
 
     # Rook North
@@ -88,7 +88,7 @@ def generate_rook_attacks(i: int, bb: int) -> int:
 
     return attacks
 
-def generate_bishop_attacks(i: int, bb: int) -> int:
+def generate_bishop_attacks(i, bb):
     attacks = 0
 
     # Bishop NW
@@ -122,7 +122,7 @@ def generate_bishop_attacks(i: int, bb: int) -> int:
 
     return attacks
 
-def generate_subsets(bb: int) -> list:
+def generate_subsets(bb) -> list:
     subsets = []
     subset = 0
     while True:
@@ -132,7 +132,7 @@ def generate_subsets(bb: int) -> list:
             break
     return subsets
 
-def init_tables() -> None:
+def init_tables():
     # KING AND KNIGHT ATTACK PRECALC
     for i in range(64):
         mask = 1 << i
@@ -242,31 +242,31 @@ def init_tables() -> None:
 #             LOOKUP             #
 # ============================== #
 
-def pawn_attacks(bb, color) -> int:
+def pawn_attacks(bb, color):
     if color == WHITE:
         return ((bb << 7) & ~FILE_H) | ((bb << 9) & ~FILE_A)
     else:
         return ((bb >> 7) & ~FILE_A) | ((bb >> 9) & ~FILE_H)
 
-def knight_attacks(sq) -> int:
+def knight_attacks(sq):
     return KNIGHT_ATTACKS[sq]
 
-def king_attacks(sq) -> int:
+def king_attacks(sq):
     return KING_ATTACKS[sq]
 
-def rook_attacks(sq, occupied) -> int:
+def rook_attacks(sq, occupied):
     attacks = ROOK_RELEVANCE[sq] & occupied
     n_bits = ROOK_RELEVANCE[sq].bit_count()
     index = ((attacks * ROOK_MAGICS[sq]) & FULL_BOARD) >> (64 - n_bits)
     return ROOK_ATTACKS[sq][index]
 
-def bishop_attacks(sq, occupied) -> int:
+def bishop_attacks(sq, occupied):
     attacks = BISHOP_RELEVANCE[sq] & occupied
     n_bits = BISHOP_RELEVANCE[sq].bit_count()
     index = ((attacks * BISHOP_MAGICS[sq]) & FULL_BOARD) >> (64 - n_bits)
     return BISHOP_ATTACKS[sq][index]
 
-def queen_attacks(sq, occupied) -> int:
+def queen_attacks(sq, occupied):
     return (rook_attacks(sq, occupied) |
             bishop_attacks(sq, occupied))
 
