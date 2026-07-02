@@ -1,13 +1,14 @@
 from constants import *
 from board import Board
 import attack_tables as at
-import move as mv
-import utils
 
 PUSH   = [-8, 8]
 D_PUSH = [-16, 16]
 ATK_L  = [7, -9]
 ATK_R  = [9, -7]
+
+def make_move(src, dst, flags):
+    return src | (dst << 6) | (flags << 12)
 
 def _is_attacked(sq, attacker, board):
     occupied = board.occupied
@@ -27,9 +28,9 @@ def _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist):
         (attacks & enemy_occ, capture)
     ]:
         while bb:
-            dst = utils.scan(bb)
+            dst = (bb & -bb).bit_length()-1
             bb &= bb - 1
-            move = mv.make_move(sq, dst, flag)
+            move = make_move(sq, dst, flag)
             movelist.append(move)
 
 def generate_moves(board: Board) -> list:
@@ -45,6 +46,7 @@ def generate_moves(board: Board) -> list:
     castling_qs = castling_rights & (1 << (2 * turn + 1))
     ks_squares  = [(F1 | G1) & occupied, (F8 | G8) & occupied]
     qs_squares  = [(B1 | C1 | D1) & occupied, (B8 | C8 | D8) & occupied]
+    king_att = _is_attacked(4 if turn == WHITE else 60, 1-turn, board)
 
     pawns   = board.pieces[turn][PAWNS]
     knights = board.pieces[turn][KNIGHTS]
@@ -74,90 +76,90 @@ def generate_moves(board: Board) -> list:
     passant_right = attacks_rraw & passant_sq
 
     while d_pushes:
-        sq = utils.scan(d_pushes)
+        sq = (d_pushes & -d_pushes).bit_length()-1
         d_pushes &= d_pushes - 1
-        move = mv.make_move(sq + D_PUSH[turn], sq, double_pawn)
+        move = make_move(sq + D_PUSH[turn], sq, double_pawn)
         movelist.append(move)
 
     while attacks_left_np:
-        sq = utils.scan(attacks_left_np)
+        sq = (attacks_left_np & -attacks_left_np).bit_length()-1 
         attacks_left_np &= attacks_left_np - 1
-        move = mv.make_move(sq + ATK_R[1-turn], sq, capture)
+        move = make_move(sq + ATK_R[1-turn], sq, capture)
         movelist.append(move)
 
     while attacks_left_p:
-        sq = utils.scan(attacks_left_p)
+        sq = (attacks_left_p & -attacks_left_p).bit_length()-1
         attacks_left_p &= attacks_left_p - 1
         for flag in range(12, 16):
-            move = mv.make_move(sq + ATK_R[1-turn], sq, flag)
+            move = make_move(sq + ATK_R[1-turn], sq, flag)
             movelist.append(move)
 
     while attacks_right_np:
-        sq = utils.scan(attacks_right_np)
+        sq = (attacks_right_np & -attacks_right_np).bit_length()-1
         attacks_right_np &= attacks_right_np - 1
-        move = mv.make_move(sq + ATK_L[1-turn], sq, capture)
+        move = make_move(sq + ATK_L[1-turn], sq, capture)
         movelist.append(move)
 
     while attacks_right_p:
-        sq = utils.scan(attacks_right_p)
+        sq = (attacks_right_p & -attacks_right_p).bit_length()-1
         attacks_right_p &= attacks_right_p - 1
         for flag in range(12, 16):
-            move = mv.make_move(sq + ATK_L[1-turn], sq, flag)
+            move = make_move(sq + ATK_L[1-turn], sq, flag)
             movelist.append(move)
 
     while pushes_np:
-        sq = utils.scan(pushes_np)
+        sq = (pushes_np & -pushes_np).bit_length()-1
         pushes_np &= pushes_np - 1
-        move = mv.make_move(sq + PUSH[turn], sq, quiet_move)
+        move = make_move(sq + PUSH[turn], sq, quiet_move)
         movelist.append(move)
 
     while pushes_p:
-        sq = utils.scan(pushes_p)
+        sq = (pushes_p & -pushes_p).bit_length()-1
         pushes_p &= pushes_p - 1
         for flag in range(8, 12):
-            move = mv.make_move(sq + PUSH[turn], sq, flag)
+            move = make_move(sq + PUSH[turn], sq, flag)
             movelist.append(move)
 
     if passant_left:
-        sq = utils.scan(passant_left)
-        move = mv.make_move(sq + ATK_R[1-turn], sq, en_passant)
+        sq = (passant_left & -passant_left).bit_length()-1
+        move = make_move(sq + ATK_R[1-turn], sq, en_passant)
         movelist.append(move)
 
     if passant_right:
-        sq = utils.scan(passant_right)
-        move = mv.make_move(sq + ATK_L[1-turn], sq, en_passant)
+        sq = (passant_right & -passant_right).bit_length()-1
+        move = make_move(sq + ATK_L[1-turn], sq, en_passant)
         movelist.append(move)
 
     # Knight generation
     while knights:
-        sq = utils.scan(knights)
+        sq = (knights & -knights).bit_length()-1
         knights &= knights - 1
         attacks = at.knight_attacks(sq)
         _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist)
 
     # Bishop generation
     while bishops:
-        sq = utils.scan(bishops)
+        sq = (bishops & -bishops).bit_length()-1
         bishops &= bishops - 1
         attacks = at.bishop_attacks(sq, occupied)
         _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist)
 
     # Rook generation
     while rooks:
-        sq = utils.scan(rooks)
+        sq = (rooks & -rooks).bit_length()-1
         rooks &= rooks - 1
         attacks = at.rook_attacks(sq, occupied)
         _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist)
 
     # Queen generation
     while queens:
-        sq = utils.scan(queens)
+        sq = (queens & -queens).bit_length()-1
         queens &= queens - 1
         attacks = at.queen_attacks(sq, occupied)
         _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist)
 
     # King generation
-    sq = utils.scan(king)
+    sq = (king & -king).bit_length()-1
     attacks = at.king_attacks(sq)
     _generate_piece_moves(sq, attacks, enemy_occ, occupied, movelist)
 
@@ -167,22 +169,22 @@ def generate_moves(board: Board) -> list:
                        _is_attacked(6, 1 - turn, board))
         attacked_qs = (_is_attacked(2, 1 - turn, board) or
                        _is_attacked(3, 1 - turn, board))
-        if not attacked_ks and castling_ks and not ks_squares[turn]:
-            move = mv.make_move(4, 6, king_castle)
+        if not attacked_ks and castling_ks and not ks_squares[turn] and not king_att:
+            move = make_move(4, 6, king_castle)
             movelist.append(move)
-        if not attacked_qs and castling_qs and not qs_squares[turn]:
-            move = mv.make_move(4, 2, queen_castle)
+        if not attacked_qs and castling_qs and not qs_squares[turn] and not king_att:
+            move = make_move(4, 2, queen_castle)
             movelist.append(move)
     else:
         attacked_ks = (_is_attacked(61, 1 - turn, board) or
                        _is_attacked(62, 1 - turn, board))
         attacked_qs = (_is_attacked(58, 1 - turn, board) or
                        _is_attacked(59, 1 - turn, board))
-        if not attacked_ks and castling_ks and not ks_squares[turn]:
-            move = mv.make_move(60, 62, king_castle)
+        if not attacked_ks and castling_ks and not ks_squares[turn] and not king_att:
+            move = make_move(60, 62, king_castle)
             movelist.append(move)
-        if not attacked_qs and castling_qs and not qs_squares[turn]:
-            move = mv.make_move(60, 58, queen_castle)
+        if not attacked_qs and castling_qs and not qs_squares[turn] and not king_att:
+            move = make_move(60, 58, queen_castle)
             movelist.append(move)
 
     return movelist

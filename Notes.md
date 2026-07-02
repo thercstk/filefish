@@ -33,3 +33,8 @@ Hopefully this won't take me as long as the attack tables for the sliding pieces
 25/6/2026
 
 Took a while, now it's just me and the apply_move() and undo_move() functions. I know it's my first time, but God i hate this part.
+
+2/7/2026
+
+This has been utterly obnoxious. There were so many hidden mistakes, some of them had been there for weeks, and i've fixed all of them. 
+Now i need to focus on the evaluation. 

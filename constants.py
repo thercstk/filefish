@@ -1,11 +1,29 @@
 import random
 
-# Definitions
+# Basic Definitions
 
 PAWNS, KNIGHTS, BISHOPS, ROOKS, QUEENS, KING = range(6)
 
 WHITE = 0
 BLACK = 1
+
+# FEN to Piece
+
+FEN_CONVERT = {
+    'P' : (WHITE, PAWNS),
+    'p' : (BLACK, PAWNS),
+    'N' : (WHITE, KNIGHTS),
+    'n' : (BLACK, KNIGHTS),
+    'B' : (WHITE, BISHOPS),
+    'b' : (BLACK, BISHOPS),
+    'R' : (WHITE, ROOKS),
+    'r' : (BLACK, ROOKS),
+    'Q' : (WHITE, QUEENS),
+    'q' : (BLACK, QUEENS),
+    'K' : (WHITE, KING),
+    'k' : (BLACK, KING),
+}
+
 
 # Flags for Move Generation
 
@@ -24,7 +42,13 @@ bishop_prom_cap = 0b1101 # 13
 rook_prom_cap   = 0b1110 # 14
 queen_prom_cap  = 0b1111 # 15
 
-# Individual Squares
+# Promoted Piece by Flag:
+
+PROMOTED_TYPE = [0] * 8 + [KNIGHTS, BISHOPS, ROOKS, QUEENS] * 2
+
+PROMOTED_TYPE = tuple(PROMOTED_TYPE)
+
+# Individual Squares Bitboards
 
 A1, B1, C1, D1, E1, F1, G1, H1 = (1 << i for i in range(8))
 A2, B2, C2, D2, E2, F2, G2, H2 = (1 << i for i in range(8, 16))
@@ -34,6 +58,18 @@ A5, B5, C5, D5, E5, F5, G5, H5 = (1 << i for i in range(32, 40))
 A6, B6, C6, D6, E6, F6, G6, H6 = (1 << i for i in range(40, 48))
 A7, B7, C7, D7, E7, F7, G7, H7 = (1 << i for i in range(48, 56))
 A8, B8, C8, D8, E8, F8, G8, H8 = (1 << i for i in range(56, 64))
+
+# Mask for castling rights
+
+CASTLING_MASK = [0b1111] * 64
+CASTLING_MASK[4] = 0b1100
+CASTLING_MASK[7] = 0b1110
+CASTLING_MASK[0] = 0b1101
+CASTLING_MASK[60] = 0b0011
+CASTLING_MASK[63] = 0b1011
+CASTLING_MASK[56] = 0b0111
+
+CASTLING_MASK = tuple(CASTLING_MASK)
 
 # Files and Ranks
 
@@ -64,22 +100,7 @@ BOARD_EDGE    = RANK_1 | RANK_8 | FILE_A | FILE_H
 
 # Zobrist Hashing
 
-Z_PIECES     = [[random.getrandbits(64) for _ in range(64)] for _ in range(12)]
-Z_CASTLING   = [random.getrandbits(64) for _ in range(16)]
-Z_EN_PASSANT = [random.getrandbits(64) for _ in range(8)]
+Z_PIECES     = tuple(tuple(random.getrandbits(64) for _ in range(64)) for _ in range(12))
+Z_CASTLING   = tuple(random.getrandbits(64) for _ in range(16))
+Z_EN_PASSANT = tuple(random.getrandbits(64) for _ in range(8))
 Z_SIDE       = random.getrandbits(64)
-
-# De Brujin Multiplication
-
-DEBRUJIN64  = 0x03F79D71B4CA8B09
-
-DEBRUJIN_ID = [
-    0,  1, 48,  2, 57, 49, 28,  3,
-   61, 58, 50, 42, 38, 29, 17,  4,
-   62, 55, 59, 36, 53, 51, 43, 22,
-   45, 39, 33, 30, 24, 18, 12,  5,
-   63, 47, 56, 27, 60, 41, 37, 16,
-   54, 35, 52, 21, 44, 32, 23, 11,
-   46, 26, 40, 15, 34, 20, 31, 10,
-   25, 14, 19,  9, 13,  8,  7,  6
-]

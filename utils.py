@@ -1,9 +1,5 @@
 from constants import *
 
-def scan(bb: int) -> int:
-    mask = bb & -bb
-    return DEBRUJIN_ID[((mask * DEBRUJIN64) & FULL_BOARD) >> 58]
-
 def print_bb(bb: int):
     board = ['0'] * 64
     for i in range(64):

@@ -156,8 +156,8 @@ def _init_tables():
         king_i |= (mask >> 1) & ~FILE_H
         king_i |= (mask << 7) & ~FILE_H
 
-        KNIGHT_ATTACKS[i] = knight_i
-        KING_ATTACKS[i]   = king_i
+        KNIGHT_ATTACKS[i] = knight_i & FULL_BOARD
+        KING_ATTACKS[i]   = king_i & FULL_BOARD
 
     # BISHOP AND ROOK RELEVANCE PRECALC
     for i in range(64):
@@ -216,7 +216,7 @@ def _init_tables():
         attacks_i = [0] * 8192
         for sub in subsets:
             key = ((sub * magic) & FULL_BOARD) >> (64 - n_bits)
-            val = _generate_rook_attacks(i, sub)
+            val = _generate_rook_attacks(i, sub) & FULL_BOARD
             attacks_i[key] = val
 
         ROOK_ATTACKS[i] = attacks_i
@@ -229,7 +229,7 @@ def _init_tables():
         attacks_i = [0] * 8192
         for sub in subsets:
             key = ((sub * magic) & FULL_BOARD) >> (64 - n_bits)
-            val = _generate_bishop_attacks(i, sub)
+            val = _generate_bishop_attacks(i, sub) & FULL_BOARD
             attacks_i[key] = val
 
         BISHOP_ATTACKS[i] = attacks_i
@@ -240,24 +240,24 @@ def _init_tables():
 
 def pawn_attacks_left(bb, color):
     if color == WHITE:
-        return ((bb << 7) & ~FILE_H)
+        return ((bb << 7) & ~FILE_H) & FULL_BOARD
     else:
-        return ((bb >> 9) & ~FILE_H)
+        return ((bb >> 9) & ~FILE_H) & FULL_BOARD
 
 def pawn_attacks_right(bb, color):
     if color == WHITE:
-        return ((bb << 9) & ~FILE_A)
+        return ((bb << 9) & ~FILE_A) & FULL_BOARD
     else:
-        return ((bb >> 7) & ~FILE_A)
+        return ((bb >> 7) & ~FILE_A) & FULL_BOARD
 
 def pawn_push(sq, color):
     if color == WHITE:
         return (sq << 8) & FULL_BOARD
     else:
-        return (sq >> 8)
+        return (sq >> 8) & FULL_BOARD
 
 def pawn_d_push(sq, color, occupied):
-    sq = sq & RANK_2 if color == WHITE else RANK_7
+    sq = sq & RANK_2 if color == WHITE else sq & RANK_7
     sq = (sq << 8 if color == WHITE else sq >> 8) & ~occupied
     sq = (sq << 8 if color == WHITE else sq >> 8) & ~occupied
     return sq
