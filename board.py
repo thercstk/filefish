@@ -11,17 +11,17 @@ class Board:
         self.occupancy = [0x000000000000FFFF, 0xFFFF000000000000]
         self.occupied  =  0xFFFF00000000FFFF
 
-        self.history = [(0, 0, 0, 0)] * 1024
+        self.history = [(0, 0, 0, 0, 0)] * 1024
         self.history_idx = 0
         self.castling_rights = 15
         self.en_passant_sq = 0
         self.halfmove_clock = 0
         self.turn = WHITE
         self.zobrist = 0
-        
-        self.calculate_zobrist()
 
-    def calculate_zobrist(self):
+        self.init_zobrist()
+
+    def init_zobrist(self):
         self.zobrist = Z_CASTLING[self.castling_rights]
         for turn in (0, 1):
             for i in range(6):
@@ -30,55 +30,76 @@ class Board:
                     mask = (bb & -bb).bit_length()-1
                     bb &= bb - 1
                     self.zobrist ^= Z_PIECES[i + 6 * self.turn][mask]
+        if self.en_passant_sq:
+            ep_sq = (self.en_passant_sq & -self.en_passant_sq).bit_length()-1
+            self.zobrist ^= Z_EN_PASSANT[ep_sq & 7]
+        if self.turn == BLACK:
+            self.zobrist ^= Z_SIDE
 
     def apply_move(self, move):
         enemy = 1 - self.turn
 
-        src  =  move & 63
+        src  = move & 63
         dst  = (move >> 6) & 63
-        flag =  move >> 12
+        flag = (move >> 12) & 15
+        piece_moved = move >> 16
 
         src_bb = 1 << src
         dst_bb = 1 << dst
 
-        piece_moved = -1
-        for piece_type in range(6):
-            if src_bb & self.pieces[self.turn][piece_type]:
-                piece_moved = piece_type
-                break
+        z = self.zobrist
 
         # Moving the piece
         self.pieces[self.turn][piece_moved] &= ~src_bb
         if flag in range(8, 16):
             self.pieces[self.turn][PROMOTED_TYPE[flag]] |= dst_bb
+            z ^= Z_PIECES[6 * self.turn + piece_moved][src]
+            z ^= Z_PIECES[6 * self.turn + PROMOTED_TYPE[flag]][dst]
         else:
             self.pieces[self.turn][piece_moved] |= dst_bb
+            z ^= Z_PIECES[6 * self.turn + piece_moved][src]
+            z ^= Z_PIECES[6 * self.turn + piece_moved][dst]
+
+        # Occupancy
+        self.occupancy[self.turn] ^= src_bb ^ dst_bb
 
         # Capturing the other piece
         captured = -1
         if flag in (capture, en_passant) or 12 <= flag <= 15:
-            for piece_type in range(6):
-                if dst_bb & self.pieces[enemy][piece_type]:
-                    self.pieces[enemy][piece_type] &= ~dst_bb
-                    captured = piece_type
-                    break
-            if captured == -1:
-                captured = 0
-                self.pieces[enemy][captured] &= \
-                    ~(dst_bb >> 8 if self.turn == WHITE else dst_bb << 8)
+            if flag == en_passant:
+                captured = PAWNS
+                cap_bb = dst_bb >> 8 if self.turn == WHITE else dst_bb << 8
+                cap_sq = dst - 8 if self.turn == WHITE else dst + 8
+                self.pieces[enemy][captured] &= ~cap_bb
+                self.occupancy[enemy] ^= cap_bb
+                z ^= Z_PIECES[enemy * 6 + captured][cap_sq]
+            else:
+                for piece_type in range(6):
+                    if dst_bb & self.pieces[enemy][piece_type]:
+                        self.pieces[enemy][piece_type] &= ~dst_bb
+                        captured = piece_type
+                        break
+                self.occupancy[enemy] ^= dst_bb
+                z ^= Z_PIECES[enemy * 6 + captured][dst]
 
         # Saving the irreversible changes
         self.history[self.history_idx] = (
             self.castling_rights,
             self.en_passant_sq,
             self.halfmove_clock,
-            captured
+            captured,
+            self.zobrist
         )
         self.history_idx += 1
+
+        # Clearing old en_passant zobrist
+        if self.en_passant_sq:
+            z ^= Z_EN_PASSANT[((en_passant & -en_passant).bit_length()-1) & 7]
 
         # Setting the new en-passant square
         if flag == double_pawn:
             self.en_passant_sq = 1 << ((src + dst) >> 1)
+            z ^= Z_EN_PASSANT[((src + dst) >> 1) & 7]
         else:
             self.en_passant_sq = 0
 
@@ -87,21 +108,37 @@ class Board:
             if self.turn == WHITE:
                 self.pieces[self.turn][ROOKS] &= ~H1
                 self.pieces[self.turn][ROOKS] |= F1
+                self.occupancy[self.turn] ^=  H1 ^ F1
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][7]
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][5]
             else:
                 self.pieces[self.turn][ROOKS] &= ~H8
                 self.pieces[self.turn][ROOKS] |= F8
+                self.occupancy[self.turn] ^= H8 ^ F8
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][63]
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][61]
 
         if flag == queen_castle:
             if self.turn == WHITE:
                 self.pieces[self.turn][ROOKS] &= ~A1
                 self.pieces[self.turn][ROOKS] |= D1
+                self.occupancy[self.turn] ^= A1 ^ D1
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][0]
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][3]
             else:
                 self.pieces[self.turn][ROOKS] &= ~A8
                 self.pieces[self.turn][ROOKS] |= D8
-        
+                self.occupancy[self.turn] ^= A8 ^ D8
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][56]
+                z ^= Z_PIECES[self.turn * 6 + ROOKS][59]
+
         # Castling rights update
+        old_rights = self.castling_rights
         self.castling_rights &= CASTLING_MASK[src]
         self.castling_rights &= CASTLING_MASK[dst]
+        if old_rights != self.castling_rights:
+            z ^= Z_CASTLING[old_rights]
+            z ^= Z_CASTLING[self.castling_rights]
 
         # Halfmove clock and turn update
         if flag == capture or piece_moved == PAWNS:
@@ -110,86 +147,80 @@ class Board:
             self.halfmove_clock += 1
 
         self.turn ^= 1
+        z ^= Z_SIDE
 
-        # Update for occupancy & occupied
-        self.occupancy[0] = 0
-        self.occupancy[1] = 0
-        for turn in (0, 1):
-            for piece_type in range(6):
-                self.occupancy[turn] |= self.pieces[turn][piece_type]
-
+        # Update for occupied
         self.occupied = self.occupancy[0] | self.occupancy[1]
 
         # Last but not least
-        self.calculate_zobrist()
+        self.zobrist = z
 
     def undo_move(self, move):
         self.history_idx -= 1
         state = self.history[self.history_idx]
         enemy = self.turn
         self.turn = 1-self.turn
-        
-        src  =  move & 63
+
+        src  = move & 63
         dst  = (move >> 6) & 63
-        flag =  move >> 12
+        flag = (move >> 12) & 15
+        piece_moved = move >> 16
+
 
         src_bb = 1 << src
         dst_bb = 1 << dst
 
         # Returning the moved piece to it's original position
-        if flag in range(8, 16):
+        if flag & 0b1000:
             self.pieces[self.turn][PROMOTED_TYPE[flag]] &= ~dst_bb
             self.pieces[self.turn][PAWNS] |= src_bb
         else:
-            piece_moved = -1
-            for piece_type in range(6):
-                if dst_bb & self.pieces[self.turn][piece_type]:
-                    piece_moved = piece_type
-                    break
             self.pieces[self.turn][piece_moved] &= ~dst_bb
             self.pieces[self.turn][piece_moved] |= src_bb
+
+        self.occupancy[self.turn] ^= src_bb ^ dst_bb
 
         # Restoring the captured piece
         captured = state[3]
         if flag == en_passant:
             captured_bb = dst_bb >> 8 if self.turn == WHITE else dst_bb << 8
             self.pieces[enemy][captured] |= captured_bb
+            self.occupancy[enemy] ^= captured_bb
         elif flag == 4 or 12 <= flag <= 15:
             self.pieces[enemy][captured] |= dst_bb
+            self.occupancy[enemy] ^= dst_bb
 
         # Undoing the castling
         if flag == king_castle:
             if self.turn == WHITE:
                 self.pieces[self.turn][ROOKS] &= ~F1
                 self.pieces[self.turn][ROOKS] |= H1
+                self.occupancy[self.turn] ^=  H1 ^ F1
             else:
                 self.pieces[self.turn][ROOKS] &= ~F8
                 self.pieces[self.turn][ROOKS] |= H8
+                self.occupancy[self.turn] ^= H8 ^ F8
 
         if flag == queen_castle:
             if self.turn == WHITE:
                 self.pieces[self.turn][ROOKS] &= ~D1
                 self.pieces[self.turn][ROOKS] |= A1
+                self.occupancy[self.turn] ^= A1 ^ D1
             else:
                 self.pieces[self.turn][ROOKS] &= ~D8
                 self.pieces[self.turn][ROOKS] |= A8
+                self.occupancy[self.turn] ^= A8 ^ D8
 
         # Restoring irreversible data
         self.castling_rights = state[0]
         self.en_passant_sq   = state[1]
         self.halfmove_clock  = state[2]
 
-        # Update for occupancy & occupied
-        self.occupancy[0] = 0
-        self.occupancy[1] = 0
-        for turn in (0, 1):
-            for piece_type in range(6):
-                self.occupancy[turn] |= self.pieces[turn][piece_type]
-
+        # Update for occupied
         self.occupied = self.occupancy[0] | self.occupancy[1]
 
-        # Zobrist recalculation
-        self.calculate_zobrist()
+        # Zobrist
+        self.zobrist = state[4]
 
     def set_fen(self, fen):
         parts = fen.split()
@@ -242,4 +273,4 @@ class Board:
             self.en_passant_sq = 1 << (ep_rank * 8 + ep_file)
 
         # Zobrist
-        self.calculate_zobrist()
+        self.init_zobrist()
