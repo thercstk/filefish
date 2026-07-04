@@ -1,6 +1,6 @@
 from constants import *
 
-def _decode_move(move):
+def _decode_move(move) -> tuple:
     return (move & 63,
            (move >> 6) & 63, 
            (move >> 12) & 15,
