@@ -1,5 +1,11 @@
 from constants import *
 
+def _decode_move(move):
+    return (move & 63,
+           (move >> 6) & 63, 
+           (move >> 12) & 15,
+            move >> 16)
+
 class Board:
     def __init__(self):
         self.pieces = [
@@ -39,10 +45,7 @@ class Board:
     def apply_move(self, move):
         enemy = 1 - self.turn
 
-        src  = move & 63
-        dst  = (move >> 6) & 63
-        flag = (move >> 12) & 15
-        piece_moved = move >> 16
+        src, dst, flag, piece_moved = _decode_move(move)
 
         src_bb = 1 << src
         dst_bb = 1 << dst
@@ -161,11 +164,7 @@ class Board:
         enemy = self.turn
         self.turn = 1-self.turn
 
-        src  = move & 63
-        dst  = (move >> 6) & 63
-        flag = (move >> 12) & 15
-        piece_moved = move >> 16
-
+        src, dst, flag, piece_moved = _decode_move(move)
 
         src_bb = 1 << src
         dst_bb = 1 << dst
