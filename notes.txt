@@ -1,0 +1,45 @@
+10/6/2026:
+
+Well, hi there, this is my first project ever. Kinda ambitious, but i like it.
+I'm currently learning how to using Git and Python along the way.
+It's mostly the main reason of this entire project.
+
+Also ambitious trying to use bitboards for this, i expect pain.
+Nobody is meant to read this while i still work on the engine, but i want to journal the progress and upload
+the changes progressively, not to make a giant push with all the work.
+
+The first thing i need is a good board representation. We'll see how it goes.
+
+12/6/2026
+
+Currently struggling with organization. First commits will tend to have positional changes.
+
+16/6/2026
+
+After some minimal changes (and the attack tables, of course) i've decided to implement De Brujin BitScan for a
+minimal performance boost. And, if i stay awake, maybe i can get to implement the attack tables for the sliding pieces.
+
+17/6/2026
+
+Finally finished the attack tables for the sliding pieces, Jesus. Took me half a day, i'm tired.
+With this i think i can continue to the part of the engine which i like most. Search + Evaluation. Although i first need a move
+generating function. I'm gonna take a break and decide what to do next. I'm happy :D.
+
+22/6/2026
+
+After a few days of rest, i'm going to continue with the move generation. I will be starting to use Conventional Commits as a standart from now on.
+Hopefully this won't take me as long as the attack tables for the sliding pieces.
+
+25/6/2026
+
+Took a while, now it's just me and the apply_move() and undo_move() functions. I know it's my first time, but God i hate this part.
+
+2/7/2026
+
+This has been utterly obnoxious. There were so many hidden mistakes, some of them had been there for weeks, and i've fixed all of them.
+Now i need to focus on the evaluation.
+
+7/7/2026
+
+I've organized and stuff. I also tried to optimize as much as i could the move generation before i start working on the evaluation.
+It generates at 1.04m NPS on PyPy3 in my i5 1135G7.
