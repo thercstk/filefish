@@ -21,7 +21,7 @@ This project has no external dependencies beyond the standard library. However, 
 ```bash
 git clone https://github.com/thercstk/filefish.git
 cd filefish
-pypy3 tests/perft.py
+pypy3 -m tests.perft
 ```
 
 Keep in mind that the project is still in development, these are only raw move generation benchmarks.
