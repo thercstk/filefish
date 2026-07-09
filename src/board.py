@@ -1,4 +1,4 @@
-from src.constants import *
+from .constants import *
 
 def _decode_move(move) -> tuple:
     return (move & 63,

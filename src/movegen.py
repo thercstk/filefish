@@ -1,6 +1,6 @@
-from src.constants import *
-from src.board import Board
-import src.attack_tables as at
+from .constants import *
+from .board import Board
+from . import attack_tables as at
 
 # Shifting constants to avoid if/else casework ovehead
 PUSH   = (-8, 8)
